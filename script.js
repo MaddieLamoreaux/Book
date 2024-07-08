@@ -37,7 +37,8 @@ async function addBook() {
 
         if (response.ok) {
             console.log('Book added successfully');
-            displayBooks(); // Refresh the list of books after adding
+            const addedBook = await response.json(); // Assume the server returns the added book
+            appendBookToList(addedBook); // Append only the newly added book
             $('#book-form')[0].reset(); // Clear form inputs
         } else {
             throw new Error('Failed to add book');
@@ -45,6 +46,27 @@ async function addBook() {
     } catch (error) {
         console.error('Error adding book:', error);
     }
+}
+
+function appendBookToList(book) {
+    const bookList = $('#book-list');
+    bookList.append(`
+        <div class="book" data-id="${book._id}">
+            <h3>${book.title}</h3>
+            <p>${book.author}</p>
+            <button class="edit">Edit</button>
+            <button class="remove">Remove</button>
+        </div>
+    `);
+
+    // Attach handlers for the newly added book's buttons
+    $('.edit').off('click').last().on('click', function() {
+        editBook($(this).closest('.book').data('id'));
+    });
+
+    $('.remove').off('click').last().on('click', function() {
+        removeBook($(this).closest('.book').data('id'));
+    });
 }
 
 async function displayBooks() {
