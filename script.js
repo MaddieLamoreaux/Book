@@ -21,6 +21,7 @@ async function addBook() {
     }
 
     const book = {
+        id: Date.now(), // Use timestamp as a unique ID
         title: title,
         author: author,
         year: new Date().getFullYear() // Assuming you want to capture the current year
@@ -45,28 +46,15 @@ async function addBook() {
         }
     } catch (error) {
         console.error('Error adding book:', error);
+        storeBookLocally(book);
     }
 }
 
-function appendBookToList(book) {
-    const bookList = $('#book-list');
-    bookList.append(`
-        <div class="book" data-id="${book._id}">
-            <h3>${book.title}</h3>
-            <p>${book.author}</p>
-            <button class="edit">Edit</button>
-            <button class="remove">Remove</button>
-        </div>
-    `);
-
-    // Attach handlers for the newly added book's buttons
-    $('.edit').off('click').last().on('click', function() {
-        editBook($(this).closest('.book').data('id'));
-    });
-
-    $('.remove').off('click').last().on('click', function() {
-        removeBook($(this).closest('.book').data('id'));
-    });
+function storeBookLocally(book) {
+    let books = JSON.parse(localStorage.getItem('books')) || [];
+    books.push(book);
+    localStorage.setItem('books', JSON.stringify(books));
+    appendBookToList(book); // Append to local display
 }
 
 async function displayBooks() {
@@ -74,34 +62,40 @@ async function displayBooks() {
         const response = await fetch('http://localhost:3000/books');
         if (response.ok) {
             const books = await response.json();
-            const bookList = $('#book-list');
-            bookList.empty();
-
-            books.forEach(book => {
-                bookList.append(`
-                    <div class="book" data-id="${book._id}">
-                        <h3>${book.title}</h3>
-                        <p>${book.author}</p>
-                        <button class="edit">Edit</button>
-                        <button class="remove">Remove</button>
-                    </div>
-                `);
-            });
-
-            // Reattach event handlers for edit and remove buttons
-            $('.edit').off('click').on('click', function() {
-                editBook($(this).closest('.book').data('id'));
-            });
-
-            $('.remove').off('click').on('click', function() {
-                removeBook($(this).closest('.book').data('id'));
-            });
+            updateBookListDisplay(books);
         } else {
             throw new Error('Failed to fetch books');
         }
     } catch (error) {
         console.error('Error fetching books:', error);
+        const books = JSON.parse(localStorage.getItem('books')) || [];
+        updateBookListDisplay(books);
     }
+}
+
+function updateBookListDisplay(books) {
+    const bookList = $('#book-list');
+    bookList.empty();
+
+    books.forEach(book => {
+        bookList.append(`
+            <div class="book" data-id="${book.id}">
+                <h3>${book.title}</h3>
+                <p>${book.author}</p>
+                <button class="edit">Edit</button>
+                <button class="remove">Remove</button>
+            </div>
+        `);
+    });
+
+    // Reattach event handlers for edit and remove buttons
+    $('.edit').off('click').on('click', function() {
+        editBook($(this).closest('.book').data('id'));
+    });
+
+    $('.remove').off('click').on('click', function() {
+        removeBook($(this).closest('.book').data('id'));
+    });
 }
 
 async function editBook(id) {
@@ -136,6 +130,7 @@ async function editBook(id) {
         }
     } catch (error) {
         console.error('Error editing book:', error);
+        updateBookInLocalStorage(id, book);
     }
 }
 
@@ -153,7 +148,25 @@ async function removeBook(id) {
         }
     } catch (error) {
         console.error('Error deleting book:', error);
+        removeBookFromLocalStorage(id);
     }
+}
+
+function updateBookInLocalStorage(id, updatedBook) {
+    let books = JSON.parse(localStorage.getItem('books')) || [];
+    const index = books.findIndex(book => book.id === id);
+    if (index !== -1) {
+        books[index] = updatedBook;
+        localStorage.setItem('books', JSON.stringify(books));
+        displayBooks();
+    }
+}
+
+function removeBookFromLocalStorage(id) {
+    let books = JSON.parse(localStorage.getItem('books'));
+    books = books.filter(book => book.id !== id);
+    localStorage.setItem('books', JSON.stringify(books));
+    displayBooks();
 }
 
 function init3DAnimation() {
